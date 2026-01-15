@@ -143,15 +143,12 @@ const sidebarConfig: Record<ModuleType, SidebarSection[]> = {
           titleKey: 'sidebar.imageGeneration',
           items: [
             { id: 'text-to-image', labelKey: 'sidebar.textToImage', icon: <ImageIcon className="w-4 h-4" /> },
-            { id: 'ecommerce-assets', labelKey: 'sidebar.ecommerceAssets', icon: <ShoppingBag className="w-4 h-4" /> },
-            { id: 'reference-to-image', labelKey: 'sidebar.referenceToImage', icon: <Layers className="w-4 h-4" /> },
           ],
         },
         {
           titleKey: 'sidebar.videoGeneration',
           items: [
             { id: 'text-to-video', labelKey: 'sidebar.textToVideo', icon: <Video className="w-4 h-4" /> },
-            { id: 'reference-to-video', labelKey: 'sidebar.referenceToVideo', icon: <Layers className="w-4 h-4" /> },
           ],
         },
         {
