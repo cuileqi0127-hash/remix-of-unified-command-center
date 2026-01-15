@@ -14,11 +14,12 @@ import {
   MessageSquare,
   ImageIcon,
   RatioIcon,
-  X
+  X,
+  Copy,
+  Clipboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { InfiniteCanvas } from './InfiniteCanvas';
 import { ImageCapsule, type SelectedImage } from './ImageCapsule';
+import { toast } from 'sonner';
 
 interface ChatMessage {
   id: string;
@@ -134,7 +136,11 @@ const initialCanvasImages: CanvasImage[] = [
   },
 ];
 
-export function TextToImage() {
+interface TextToImageProps {
+  onNavigate?: (itemId: string) => void;
+}
+
+export function TextToImage({ onNavigate }: TextToImageProps) {
   const { t, i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -144,18 +150,16 @@ export function TextToImage() {
   const [showHistory, setShowHistory] = useState(false);
   const [model, setModel] = useState('flux-schnell');
   const [aspectRatio, setAspectRatio] = useState('1:1');
-  const [enhanceMode, setEnhanceMode] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(mockHistory);
   const [isGenerating, setIsGenerating] = useState(false);
   const [canvasImages, setCanvasImages] = useState<CanvasImage[]>(initialCanvasImages);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [copiedImage, setCopiedImage] = useState<CanvasImage | null>(null);
 
   const workModes = [
     { id: 'text-to-image', label: isZh ? '文生图' : 'Text to Image' },
-    { id: 'style-transfer', label: isZh ? '风格迁移' : 'Style Transfer' },
-    { id: 'image-enhance', label: isZh ? '图片增强' : 'Image Enhance' },
   ];
 
   // Mock history sessions for the sidebar
@@ -166,11 +170,13 @@ export function TextToImage() {
     { id: 'session-4', title: '抽象数字艺术', timestamp: new Date(Date.now() - 259200000), messageCount: 5 },
   ];
 
-  // Handle new conversation
+  // Handle new conversation - clears chat AND canvas
   const handleNewConversation = useCallback(() => {
     setMessages([]);
     setSelectedImages([]);
     setPrompt('');
+    setCanvasImages([]);
+    setSelectedImageId(null);
   }, []);
 
   // Handle loading history session
@@ -231,6 +237,42 @@ export function TextToImage() {
       return [...prev, image];
     });
   }, []);
+
+  // Handle copying image to clipboard for cross-session paste
+  const handleCopyImage = useCallback((image: CanvasImage) => {
+    setCopiedImage(image);
+    toast.success(isZh ? '已复制到剪贴板，可在新画布粘贴' : 'Copied to clipboard, can paste in new canvas');
+  }, [isZh]);
+
+  // Handle pasting copied image to canvas
+  const handlePasteImage = useCallback(() => {
+    if (copiedImage) {
+      const newImage: CanvasImage = {
+        ...copiedImage,
+        id: `img-${Date.now()}`,
+        x: 100 + Math.random() * 100,
+        y: 100 + Math.random() * 100,
+      };
+      setCanvasImages(prev => [...prev, newImage]);
+      setSelectedImageId(newImage.id);
+      toast.success(isZh ? '已粘贴图片到画布' : 'Image pasted to canvas');
+    }
+  }, [copiedImage, isZh]);
+
+  // Handle keyboard shortcuts for copy/paste
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedImageId) {
+        const image = canvasImages.find(img => img.id === selectedImageId);
+        if (image) handleCopyImage(image);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedImage) {
+        handlePasteImage();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedImageId, canvasImages, copiedImage, handleCopyImage, handlePasteImage]);
 
   // Drag and drop handlers for input area
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -375,35 +417,25 @@ export function TextToImage() {
   const selectedImage = canvasImages.find(img => img.id === selectedImageId);
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-0 animate-fade-in overflow-hidden rounded-xl border border-border bg-background">
+    <div className="flex h-full flex-1 gap-0 animate-fade-in overflow-hidden rounded-xl border border-border bg-background">
       {/* Left Panel - Chat Interface (35%) */}
       <div className="w-[35%] flex flex-col border-r border-border bg-background">
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          {/* Mode Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="h-auto gap-2 px-2 py-1 text-base font-medium hover:bg-muted"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                {workModes.find(m => m.id === workMode)?.label}
-                <ChevronDown className="h-4 w-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[160px]">
-              {workModes.map((m) => (
-                <DropdownMenuItem
-                  key={m.id}
-                  onClick={() => setWorkMode(m.id)}
-                  className={cn(workMode === m.id && 'bg-accent')}
-                >
-                  {m.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Back Button + Title */}
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onNavigate?.('app-plaza')}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-base font-medium">
+              {isZh ? '文生图' : 'Text to Image'}
+            </span>
+          </div>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1">
@@ -674,19 +706,6 @@ export function TextToImage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="h-4 w-px bg-border" />
-
-                {/* Enhance Mode Toggle */}
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{isZh ? '增强模式' : 'Enhance'}</span>
-                  <Switch 
-                    checked={enhanceMode} 
-                    onCheckedChange={setEnhanceMode}
-                    className="scale-75"
-                  />
-                </div>
-                
                 {/* Add Button */}
                 <Button 
                   variant="ghost" 
@@ -750,11 +769,17 @@ export function TextToImage() {
               {selectedImage.prompt}
             </span>
             <div className="h-4 w-px bg-border" />
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-              <Download className="h-4 w-4" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 rounded-full"
+              onClick={() => handleCopyImage(selectedImage)}
+              title={isZh ? '复制到新对话' : 'Copy to new session'}
+            >
+              <Copy className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-              <Share2 className="h-4 w-4" />
+              <Download className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
               <Edit3 className="h-4 w-4" />
@@ -768,6 +793,19 @@ export function TextToImage() {
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
+        )}
+
+        {/* Paste Button - Shows when image is copied */}
+        {copiedImage && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="absolute left-4 top-4 gap-1.5 shadow-sm"
+            onClick={handlePasteImage}
+          >
+            <Clipboard className="h-4 w-4" />
+            {isZh ? '粘贴图片' : 'Paste Image'}
+          </Button>
         )}
 
         {/* Image Count Badge */}

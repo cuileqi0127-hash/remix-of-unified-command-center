@@ -36,7 +36,7 @@ export function AIToolboxModule({ activeItem, onNavigate }: AIToolboxModuleProps
     
     // Image Generation
     case 'text-to-image':
-      return <TextToImage />;
+      return <TextToImage onNavigate={onNavigate} />;
     case 'ecommerce-assets':
       return <PlaceholderPage title="E-commerce Assets 电商素材图" description="Generate product images and e-commerce visual assets." />;
     case 'reference-to-image':
