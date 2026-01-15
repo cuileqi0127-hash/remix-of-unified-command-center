@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { InfiniteCanvas } from './InfiniteCanvas';
+import { ImageCapsule, type SelectedImage } from './ImageCapsule';
 
 interface ChatMessage {
   id: string;
@@ -146,6 +147,8 @@ export function TextToImage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [canvasImages, setCanvasImages] = useState<CanvasImage[]>(initialCanvasImages);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const workModes = [
     { id: 'scene-fusion', label: isZh ? '场景融合' : 'Scene Fusion' },
@@ -189,6 +192,47 @@ export function TextToImage() {
       prev.map(img => img.id === id ? { ...img, x, y } : img)
     );
   }, []);
+
+  // Handle removing selected image from input area
+  const handleRemoveSelectedImage = useCallback((id: string) => {
+    setSelectedImages(prev => prev.filter(img => img.id !== id));
+  }, []);
+
+  // Handle adding image to selected (from drag or auto-attach)
+  const handleAddSelectedImage = useCallback((image: SelectedImage) => {
+    setSelectedImages(prev => {
+      // Prevent duplicates
+      if (prev.some(img => img.id === image.id)) return prev;
+      return [...prev, image];
+    });
+  }, []);
+
+  // Drag and drop handlers for input area
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    try {
+      const data = e.dataTransfer.getData('application/json');
+      if (data) {
+        const imageData = JSON.parse(data) as SelectedImage;
+        handleAddSelectedImage(imageData);
+      }
+    } catch (err) {
+      console.error('Failed to parse dropped image data:', err);
+    }
+  }, [handleAddSelectedImage]);
 
   const handleGenerate = () => {
     if (!prompt.trim() || isGenerating) return;
@@ -277,6 +321,14 @@ export function TextToImage() {
       };
       setCanvasImages(prev => [...prev, newImage]);
       setSelectedImageId(newImage.id);
+      
+      // Auto-attach newly generated image to input area
+      handleAddSelectedImage({
+        id: newImage.id,
+        url: newImage.url,
+        prompt: newImage.prompt,
+      });
+      
       setIsGenerating(false);
     }, (designSteps.length + 1) * 600);
   };
@@ -448,15 +500,42 @@ export function TextToImage() {
 
         {/* Bottom Input Area */}
         <div className="border-t border-border bg-background p-4">
-          {/* Input Container */}
-          <div className="relative rounded-xl border border-border bg-muted/30 shadow-sm focus-within:ring-2 focus-within:ring-primary/20">
+          {/* Input Container with Drop Zone */}
+          <div 
+            className={cn(
+              "relative rounded-xl border bg-muted/30 shadow-sm transition-all",
+              "focus-within:ring-2 focus-within:ring-primary/20",
+              isDragOver 
+                ? "border-primary border-dashed bg-primary/5 ring-2 ring-primary/30" 
+                : "border-border"
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {/* Selected Images Capsules */}
+            {selectedImages.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-1">
+                {selectedImages.map((img) => (
+                  <ImageCapsule
+                    key={img.id}
+                    image={img}
+                    onRemove={handleRemoveSelectedImage}
+                  />
+                ))}
+              </div>
+            )}
+            
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={isZh ? '描述您想要生成的图片...' : 'Describe the image you want to generate...'}
               rows={2}
-              className="w-full resize-none border-0 bg-transparent px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none"
+              className={cn(
+                "w-full resize-none border-0 bg-transparent px-4 text-sm placeholder:text-muted-foreground focus:outline-none",
+                selectedImages.length > 0 ? "pt-2 pb-3" : "py-3"
+              )}
             />
             
             {/* Bottom toolbar */}
@@ -578,6 +657,9 @@ export function TextToImage() {
           onImageMove={handleImageMove}
           onImageSelect={setSelectedImageId}
           selectedImageId={selectedImageId}
+          onImageDragStart={(image) => {
+            // Optional: could show visual feedback when drag starts
+          }}
         />
 
         {/* Selected Image Floating Toolbar */}

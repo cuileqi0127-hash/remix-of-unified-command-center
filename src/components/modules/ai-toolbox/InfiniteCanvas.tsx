@@ -19,6 +19,7 @@ interface InfiniteCanvasProps {
   onImageMove?: (id: string, x: number, y: number) => void;
   onImageSelect?: (id: string | null) => void;
   selectedImageId?: string | null;
+  onImageDragStart?: (image: CanvasImage) => void;
 }
 
 const MIN_ZOOM = 0.25;
@@ -30,6 +31,7 @@ export function InfiniteCanvas({
   onImageMove,
   onImageSelect,
   selectedImageId,
+  onImageDragStart,
 }: InfiniteCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -170,7 +172,16 @@ export function InfiniteCanvas({
                 src={image.url}
                 alt={image.prompt || 'Generated image'}
                 className="h-full w-full rounded-lg object-cover"
-                draggable={false}
+                draggable={true}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/json', JSON.stringify({
+                    id: image.id,
+                    url: image.url,
+                    prompt: image.prompt,
+                  }));
+                  e.dataTransfer.effectAllowed = 'copy';
+                  onImageDragStart?.(image);
+                }}
               />
               {/* Selection Handles */}
               {selectedImageId === image.id && (
