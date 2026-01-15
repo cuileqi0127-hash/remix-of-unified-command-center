@@ -170,13 +170,14 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
     { id: 'session-4', title: '抽象数字艺术', timestamp: new Date(Date.now() - 259200000), messageCount: 5 },
   ];
 
-  // Handle new conversation - clears chat AND canvas
+  // Handle new conversation - clears chat AND canvas (but preserves copied image)
   const handleNewConversation = useCallback(() => {
     setMessages([]);
     setSelectedImages([]);
     setPrompt('');
     setCanvasImages([]);
     setSelectedImageId(null);
+    // Note: copiedImage is intentionally NOT cleared to allow cross-session paste
   }, []);
 
   // Handle loading history session
@@ -244,7 +245,7 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
     toast.success(isZh ? '已复制到剪贴板，可在新画布粘贴' : 'Copied to clipboard, can paste in new canvas');
   }, [isZh]);
 
-  // Handle pasting copied image to canvas
+  // Handle pasting copied image to canvas (clears copiedImage after paste)
   const handlePasteImage = useCallback(() => {
     if (copiedImage) {
       const newImage: CanvasImage = {
@@ -255,6 +256,7 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
       };
       setCanvasImages(prev => [...prev, newImage]);
       setSelectedImageId(newImage.id);
+      setCopiedImage(null); // Clear after paste - single use
       toast.success(isZh ? '已粘贴图片到画布' : 'Image pasted to canvas');
     }
   }, [copiedImage, isZh]);
@@ -419,23 +421,19 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
   return (
     <div className="flex h-full flex-1 gap-0 animate-fade-in overflow-hidden rounded-xl border border-border bg-background">
       {/* Left Panel - Chat Interface (35%) */}
-      <div className="w-[35%] flex flex-col border-r border-border bg-background">
+      <div className="w-[35%] flex flex-col border-r border-border bg-background h-full min-h-0">
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          {/* Back Button + Title */}
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => onNavigate?.('app-plaza')}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 shrink-0">
+          {/* Back Button + Title - Merged as single clickable component */}
+          <button 
+            className="flex items-center gap-1 hover:text-primary transition-colors group"
+            onClick={() => onNavigate?.('app-plaza')}
+          >
+            <ChevronLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
             <span className="text-base font-medium">
               {isZh ? '文生图' : 'Text to Image'}
             </span>
-          </div>
+          </button>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1">
@@ -469,9 +467,9 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
 
         {/* Chat History / History Sidebar */}
         {showHistory ? (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* History Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
               <h3 className="text-sm font-medium">{isZh ? '历史记录' : 'History'}</h3>
               <Button
                 variant="ghost"
@@ -482,7 +480,7 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <ScrollArea className="flex-1 px-2 py-2">
+            <ScrollArea className="flex-1 min-h-0 px-2 py-2">
               <div className="space-y-1">
                 {historySessions.map((session) => (
                   <button
@@ -502,7 +500,7 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
             </ScrollArea>
           </div>
         ) : (
-          <ScrollArea className="flex-1 px-4 py-3">
+          <ScrollArea className="flex-1 min-h-0 px-4 py-3">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <ImageIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
@@ -611,8 +609,8 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
           </ScrollArea>
         )}
 
-        {/* Bottom Input Area */}
-        <div className="border-t border-border bg-background p-4">
+        {/* Bottom Input Area - Fixed at bottom */}
+        <div className="border-t border-border bg-background p-4 shrink-0">
           {/* Input Container with Drop Zone */}
           <div 
             className={cn(
