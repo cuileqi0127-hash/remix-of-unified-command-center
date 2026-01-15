@@ -70,18 +70,18 @@ export function ImageCapsule({ image, onRemove }: ImageCapsuleProps) {
         side="top" 
         align="start"
         sideOffset={8}
-        className="w-auto p-2 bg-background/95 backdrop-blur-sm"
+        className="w-auto p-1.5 bg-background/95 backdrop-blur-sm shadow-lg rounded-lg"
       >
-        <div className="space-y-2">
-          <div className="overflow-hidden rounded-lg border border-border">
+        <div className="space-y-1.5">
+          <div className="overflow-hidden rounded-md border border-border/60 shadow-sm">
             <img
               src={image.url}
               alt={image.prompt || 'Preview'}
-              className="max-w-[240px] max-h-[240px] object-contain"
+              className="max-w-[120px] max-h-[120px] object-contain"
             />
           </div>
           {image.prompt && (
-            <p className="text-xs text-muted-foreground max-w-[240px] line-clamp-2">
+            <p className="text-[10px] text-muted-foreground max-w-[120px] line-clamp-2 leading-tight">
               {image.prompt}
             </p>
           )}
