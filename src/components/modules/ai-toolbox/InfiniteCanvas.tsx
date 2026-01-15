@@ -146,7 +146,7 @@ export function InfiniteCanvas({
           transformOrigin: '0 0',
         }}
       >
-        {images.map((image) => (
+        {images.map((image, index) => (
           <Draggable
             key={image.id}
             position={{ x: image.x, y: image.y }}
@@ -154,16 +154,21 @@ export function InfiniteCanvas({
             onStart={() => onImageSelect?.(image.id)}
             disabled={isPanning || isSpacePressed}
             bounds={false}
+            cancel=".no-drag"
           >
             <div
               className={cn(
-                'absolute cursor-move rounded-lg bg-background shadow-lg transition-shadow duration-150',
+                'absolute cursor-move rounded-lg bg-background shadow-lg transition-all duration-150',
                 selectedImageId === image.id
-                  ? 'ring-2 ring-primary shadow-xl'
+                  ? 'ring-2 ring-primary shadow-xl z-50'
                   : 'ring-1 ring-border hover:shadow-xl'
               )}
-              style={{ width: image.width, height: image.height }}
-              onClick={(e) => {
+              style={{ 
+                width: image.width, 
+                height: image.height,
+                zIndex: selectedImageId === image.id ? 50 : index + 1,
+              }}
+              onMouseDown={(e) => {
                 e.stopPropagation();
                 onImageSelect?.(image.id);
               }}
@@ -171,7 +176,12 @@ export function InfiniteCanvas({
               <img
                 src={image.url}
                 alt={image.prompt || 'Generated image'}
-                className="h-full w-full rounded-lg object-cover"
+                className="h-full w-full rounded-lg object-cover pointer-events-none select-none"
+                draggable={false}
+              />
+              {/* Drag handle overlay for HTML5 drag (to input area) */}
+              <div 
+                className="no-drag absolute bottom-2 right-2 p-1.5 rounded bg-background/80 backdrop-blur-sm cursor-grab opacity-0 hover:opacity-100 transition-opacity"
                 draggable={true}
                 onDragStart={(e) => {
                   e.dataTransfer.setData('application/json', JSON.stringify({
@@ -182,7 +192,9 @@ export function InfiniteCanvas({
                   e.dataTransfer.effectAllowed = 'copy';
                   onImageDragStart?.(image);
                 }}
-              />
+              >
+                <Move className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
               {/* Selection Handles */}
               {selectedImageId === image.id && (
                 <>
