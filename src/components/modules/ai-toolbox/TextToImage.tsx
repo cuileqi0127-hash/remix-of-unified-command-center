@@ -419,11 +419,11 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
   const selectedImage = canvasImages.find(img => img.id === selectedImageId);
 
   return (
-    <div className="flex h-full flex-1 gap-0 animate-fade-in overflow-hidden rounded-xl border border-border bg-background">
-      {/* Left Panel - Chat Interface (35%) */}
-      <div className="w-[35%] flex flex-col border-r border-border bg-background h-full min-h-0">
-        {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3 shrink-0">
+    <div className="flex h-full max-h-full gap-0 animate-fade-in overflow-hidden rounded-xl border border-border bg-background">
+      {/* Left Panel - Chat Interface (35%) - Fixed height with flex layout */}
+      <div className="w-[35%] h-full max-h-full flex flex-col border-r border-border bg-background overflow-hidden">
+        {/* Header Bar - Fixed at top */}
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 flex-shrink-0">
           {/* Back Button + Title - Merged as single clickable component */}
           <button 
             className="flex items-center gap-1 hover:text-primary transition-colors group"
@@ -465,152 +465,154 @@ export function TextToImage({ onNavigate }: TextToImageProps) {
           </div>
         </div>
 
-        {/* Chat History / History Sidebar */}
-        {showHistory ? (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* History Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-              <h3 className="text-sm font-medium">{isZh ? '历史记录' : 'History'}</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setShowHistory(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+        {/* Chat Content Area - Scrollable middle section */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {showHistory ? (
+            <div className="h-full flex flex-col overflow-hidden">
+              {/* History Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
+                <h3 className="text-sm font-medium">{isZh ? '历史记录' : 'History'}</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setShowHistory(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 py-2">
+                <div className="space-y-1">
+                  {historySessions.map((session) => (
+                    <button
+                      key={session.id}
+                      className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted transition-colors group"
+                      onClick={() => handleLoadSession(session.id)}
+                    >
+                      <p className="text-sm font-medium truncate group-hover:text-foreground">
+                        {session.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {session.timestamp.toLocaleDateString(isZh ? 'zh-CN' : 'en-US')} · {session.messageCount} {isZh ? '条消息' : 'messages'}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <ScrollArea className="flex-1 min-h-0 px-2 py-2">
-              <div className="space-y-1">
-                {historySessions.map((session) => (
-                  <button
-                    key={session.id}
-                    className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted transition-colors group"
-                    onClick={() => handleLoadSession(session.id)}
-                  >
-                    <p className="text-sm font-medium truncate group-hover:text-foreground">
-                      {session.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {session.timestamp.toLocaleDateString(isZh ? 'zh-CN' : 'en-US')} · {session.messageCount} {isZh ? '条消息' : 'messages'}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        ) : (
-          <ScrollArea className="flex-1 min-h-0 px-4 py-3">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                <ImageIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <p className="text-sm text-muted-foreground">
-                  {isZh ? '开始一个新的对话' : 'Start a new conversation'}
-                </p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  {isZh ? '输入描述来生成图片' : 'Enter a description to generate images'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      'flex flex-col gap-2',
-                      message.type === 'user' ? 'items-start' : 'items-start'
-                    )}
-                  >
-                    {message.type === 'user' ? (
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 text-lg">•</span>
-                        <p className="text-sm leading-relaxed text-foreground">{message.content}</p>
-                      </div>
-                    ) : (
-                      <div className="w-full space-y-3">
-                        {/* Design Thoughts */}
-                        {message.designThoughts && message.designThoughts.length > 0 && (
-                          <div className="space-y-2">
-                            {message.designThoughts.map((thought, idx) => (
-                              <div key={idx} className="flex items-start gap-2">
-                                <span className="mt-0.5 text-primary">•</span>
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                  <span className="font-medium text-foreground">
-                                    {thought.split('：')[0]}：
-                                  </span>
-                                  {thought.split('：').slice(1).join('：')}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {/* Status indicator when still processing */}
-                        {message.status && message.status !== 'complete' && (
-                          <div className="flex items-center gap-2 py-1">
-                            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                            <span className="text-sm text-muted-foreground">
-                              {getStatusText(message.status)}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Generated Image */}
-                        {message.image && message.status === 'complete' && (
-                          <div className="relative mt-2">
-                            <div 
-                              className="relative w-56 cursor-pointer overflow-hidden rounded-lg border border-border transition-all hover:shadow-md"
-                              onClick={() => {
-                                const img = canvasImages.find(i => i.url === message.image);
-                                if (img) setSelectedImageId(img.id);
-                              }}
-                            >
-                              <img
-                                src={message.image}
-                                alt="Generated"
-                                className="aspect-square w-full object-cover"
-                              />
-                              {/* Feedback Button */}
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="absolute bottom-2 right-2 h-7 gap-1 rounded-md bg-background/90 px-2 text-xs backdrop-blur-sm hover:bg-background"
-                              >
-                                <MessageSquare className="h-3 w-3" />
-                                {isZh ? '反馈' : 'Feedback'}
-                              </Button>
+          ) : (
+            <div className="h-full overflow-y-auto px-4 py-3">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <ImageIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    {isZh ? '开始一个新的对话' : 'Start a new conversation'}
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    {isZh ? '输入描述来生成图片' : 'Enter a description to generate images'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={cn(
+                        'flex flex-col gap-2',
+                        message.type === 'user' ? 'items-start' : 'items-start'
+                      )}
+                    >
+                      {message.type === 'user' ? (
+                        <div className="flex items-start gap-2">
+                          <span className="mt-0.5 text-lg">•</span>
+                          <p className="text-sm leading-relaxed text-foreground">{message.content}</p>
+                        </div>
+                      ) : (
+                        <div className="w-full space-y-3">
+                          {/* Design Thoughts */}
+                          {message.designThoughts && message.designThoughts.length > 0 && (
+                            <div className="space-y-2">
+                              {message.designThoughts.map((thought, idx) => (
+                                <div key={idx} className="flex items-start gap-2">
+                                  <span className="mt-0.5 text-primary">•</span>
+                                  <p className="text-sm leading-relaxed text-muted-foreground">
+                                    <span className="font-medium text-foreground">
+                                      {thought.split('：')[0]}：
+                                    </span>
+                                    {thought.split('：').slice(1).join('：')}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        )}
-                        
-                        {/* Result Summary */}
-                        {message.resultSummary && message.status === 'complete' && (
-                          <p className="text-sm leading-relaxed text-muted-foreground">
-                            {message.resultSummary}
-                          </p>
-                        )}
-                        
-                        {/* Task Complete indicator */}
-                        {message.status === 'complete' && (
-                          <div className="flex items-center gap-1.5 pt-1">
-                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">
-                              {getStatusText('complete')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-            )}
-          </ScrollArea>
-        )}
+                          )}
+                          
+                          {/* Status indicator when still processing */}
+                          {message.status && message.status !== 'complete' && (
+                            <div className="flex items-center gap-2 py-1">
+                              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                              <span className="text-sm text-muted-foreground">
+                                {getStatusText(message.status)}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Generated Image */}
+                          {message.image && message.status === 'complete' && (
+                            <div className="relative mt-2">
+                              <div 
+                                className="relative w-56 cursor-pointer overflow-hidden rounded-lg border border-border transition-all hover:shadow-md"
+                                onClick={() => {
+                                  const img = canvasImages.find(i => i.url === message.image);
+                                  if (img) setSelectedImageId(img.id);
+                                }}
+                              >
+                                <img
+                                  src={message.image}
+                                  alt="Generated"
+                                  className="aspect-square w-full object-cover"
+                                />
+                                {/* Feedback Button */}
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="absolute bottom-2 right-2 h-7 gap-1 rounded-md bg-background/90 px-2 text-xs backdrop-blur-sm hover:bg-background"
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                  {isZh ? '反馈' : 'Feedback'}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Result Summary */}
+                          {message.resultSummary && message.status === 'complete' && (
+                            <p className="text-sm leading-relaxed text-muted-foreground">
+                              {message.resultSummary}
+                            </p>
+                          )}
+                          
+                          {/* Task Complete indicator */}
+                          {message.status === 'complete' && (
+                            <div className="flex items-center gap-1.5 pt-1">
+                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">
+                                {getStatusText('complete')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Bottom Input Area - Fixed at bottom */}
-        <div className="border-t border-border bg-background p-4 shrink-0">
+        <div className="border-t border-border bg-background p-4 flex-shrink-0">
           {/* Input Container with Drop Zone */}
           <div 
             className={cn(
